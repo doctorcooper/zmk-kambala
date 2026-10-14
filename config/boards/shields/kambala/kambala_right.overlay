@@ -38,6 +38,7 @@
         , <&pro_micro 14 GPIO_ACTIVE_HIGH>
         ;
 };
+/*
 / {
     behaviors {
         hw_soft_off: hw_soft_off {
@@ -59,6 +60,7 @@
         wakeup-source;
     };
 };
+*/
 / {
     backlight: pwmleds {
         compatible = "pwm-leds";
