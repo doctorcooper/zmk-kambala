@@ -4,6 +4,17 @@ The bootloader and compiled firmware can be downloaded in the [releases section]
 
 -----
 
+## Automatic Sleep
+
+On battery power, each half enters deep sleep after 15 minutes without key or
+sensor activity, even while connected over Bluetooth. Pressing a key wakes it.
+USB power prevents automatic deep sleep on the half connected to the cable.
+Manual soft off remains available through the combo described below.
+
+The shield builds an adapted copy of the fork's `activity.c` to remove its BLE
+connection restriction. The dependency checkout stays unchanged. If the fork
+changes the relevant code, the build stops and asks for the adaptation to be reviewed.
+
 ## LED Indication
 
 The keyboard features 4 status LEDs (LED 1 to LED 4) to display battery charge, active Bluetooth profiles, and connection status.
