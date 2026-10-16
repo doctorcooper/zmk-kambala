@@ -64,21 +64,22 @@
 / {
     backlight: pwmleds {
         compatible = "pwm-leds";
+        // Mirror the physical LED order on the right half: channels 3, 2, 1, 0.
         pwm_led_0: led_0 {
-            pwms = <&pwm0 0 PWM_MSEC(10) PWM_POLARITY_NORMAL>;
+            pwms = <&pwm0 3 PWM_MSEC(10) PWM_POLARITY_NORMAL>;
             label = "BAT_LED_NODE_1";
         };
         pwm_led_1: led_1 {
-            pwms = <&pwm0 1 PWM_MSEC(10) PWM_POLARITY_NORMAL>;
+            pwms = <&pwm0 2 PWM_MSEC(10) PWM_POLARITY_NORMAL>;
             label = "BAT_LED_NODE_2";
         };
         pwm_led_2: led_2 {
             label = "BAT_LED_NODE_3";
-            pwms = <&pwm0 2 PWM_MSEC(10) PWM_POLARITY_NORMAL>;
+            pwms = <&pwm0 1 PWM_MSEC(10) PWM_POLARITY_NORMAL>;
         };
         pwm_led_3: led_3 {
             label = "BAT_LED_NODE_4";
-            pwms = <&pwm0 3 PWM_MSEC(10) PWM_POLARITY_NORMAL>;
+            pwms = <&pwm0 0 PWM_MSEC(10) PWM_POLARITY_NORMAL>;
         };
     };
 };

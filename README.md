@@ -10,11 +10,13 @@ The keyboard features 4 status LEDs (LED 1 to LED 4) to display battery charge, 
 
 ### Soft Off Countdown
 
-Hold the keys at positions 3 and 4 (R + T on the default layer) for 5 seconds,
+Hold the keys at positions 3 and 4 (R + T on the default layer) for 3 seconds,
 then release to turn both halves off. The four LEDs gradually fill in sequence
 on each half. Once the countdown is complete, all four pulse together to signal
 that the combo can be released. Releasing early cancels shutdown and clears the
 countdown. Battery, USB, and connection indications yield to the countdown.
+The right half reverses the PWM channel order so the physical LED sequence
+matches the left half for all indications.
 
 ### 🔋 Battery Status
 

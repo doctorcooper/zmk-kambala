@@ -21,7 +21,7 @@
 
 &soft_off {
     compatible = "zmk,behavior-soft-off-led";
-    hold-time-ms = <5000>;
+    hold-time-ms = <3000>;
     /delete-property/ split-peripheral-off-on-press;
 };
 
