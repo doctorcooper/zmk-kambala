@@ -19,6 +19,12 @@
 #define GAME 4
 #define RESET 5
 
+&soft_off {
+    compatible = "zmk,behavior-soft-off-led";
+    hold-time-ms = <5000>;
+    /delete-property/ split-peripheral-off-on-press;
+};
+
 &mt { flavor = "tap-preferred"; };
 
 &lt {

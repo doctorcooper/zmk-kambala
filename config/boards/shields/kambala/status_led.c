@@ -26,6 +26,8 @@
 #include <zmk/usb.h>
 #include <zmk/workqueue.h>
 
+#include "status_led.h"
+
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 // timeout
@@ -87,11 +89,83 @@ struct led pwm_leds[] = {
     },
 };
 
+static K_MUTEX_DEFINE(led_mutex);
+static bool soft_off_led_active;
+static bool soft_off_led_animating;
+static int64_t soft_off_led_started_at;
+static uint32_t soft_off_led_hold_ms;
+
+// Use a separate queue: battery/USB fades sleep on the system work queue.
+static struct k_work_q soft_off_led_queue;
+K_THREAD_STACK_DEFINE(soft_off_led_stack, 1024);
+
+static void soft_off_led_render(void) {
+    int64_t elapsed = k_uptime_get() - soft_off_led_started_at;
+    bool ready = elapsed >= soft_off_led_hold_ms;
+    for (int i = 0; i < BACKLIGHT_NUM_LEDS; i++) {
+        int brightness;
+        if (ready) {
+            brightness = ((elapsed - soft_off_led_hold_ms) / 250) % 2 ? 25 : 100;
+        } else {
+            int64_t progress = elapsed * BACKLIGHT_NUM_LEDS * 100 / soft_off_led_hold_ms;
+            brightness = CLAMP(progress - i * 100, 0, 100);
+        }
+        led_set_brightness(pwm_leds[i].dev, pwm_leds[i].id, brightness);
+    }
+}
+
+static void soft_off_led_tick(struct k_work *work);
+K_WORK_DELAYABLE_DEFINE(soft_off_led_work, soft_off_led_tick);
+
+static void soft_off_led_tick(struct k_work *work) {
+    k_mutex_lock(&led_mutex, K_FOREVER);
+    if (soft_off_led_animating) {
+        soft_off_led_render();
+        k_work_reschedule_for_queue(&soft_off_led_queue, &soft_off_led_work, K_MSEC(25));
+    }
+    k_mutex_unlock(&led_mutex);
+}
+
+void status_led_soft_off_start(uint32_t hold_ms) {
+    k_mutex_lock(&led_mutex, K_FOREVER);
+    soft_off_led_hold_ms = MAX(hold_ms, 1);
+    soft_off_led_started_at = k_uptime_get();
+    soft_off_led_active = true;
+    soft_off_led_animating = true;
+    soft_off_led_render();
+    k_work_reschedule_for_queue(&soft_off_led_queue, &soft_off_led_work, K_NO_WAIT);
+    k_mutex_unlock(&led_mutex);
+}
+
+void status_led_soft_off_stop(bool shutting_down) {
+    k_mutex_lock(&led_mutex, K_FOREVER);
+    soft_off_led_animating = false;
+    // Keep other indications suppressed until power off has completed.
+    soft_off_led_active = shutting_down;
+    k_work_cancel_delayable(&soft_off_led_work);
+    for (int i = 0; i < BACKLIGHT_NUM_LEDS; i++) {
+        led_off(pwm_leds[i].dev, pwm_leds[i].id);
+    }
+    k_mutex_unlock(&led_mutex);
+}
+
+static bool status_led_set(const struct led *led, uint8_t brightness) {
+    k_mutex_lock(&led_mutex, K_FOREVER);
+    bool allowed = !soft_off_led_active;
+    if (allowed) {
+        led_set_brightness(led->dev, led->id, brightness);
+    }
+    k_mutex_unlock(&led_mutex);
+    return allowed;
+}
+
 static void led_fade_ON(const struct led *led)
 {
     for (int brightness = 0; brightness <= LED_STATUS_ON; brightness++)
     {
-        led_set_brightness(led->dev, led->id, brightness);
+        if (!status_led_set(led, brightness)) {
+            return;
+        }
         k_msleep(LED_FADE_DELAY);
     }
     return;
@@ -101,7 +175,9 @@ static void led_fade_OFF(const struct led *led)
 {
     for (int brightness = LED_STATUS_ON; brightness >= LED_STATUS_OFF; brightness--)
     {
-        led_set_brightness(led->dev, led->id, brightness);
+        if (!status_led_set(led, brightness)) {
+            return;
+        }
         k_msleep(LED_FADE_DELAY);
     }
     return;
@@ -110,7 +186,7 @@ static void led_fade_OFF(const struct led *led)
 static void led_all_OFF() {
     for (int i = 0; i < BACKLIGHT_NUM_LEDS; i++) {
         const struct led *led = &pwm_leds[i];
-        led_off(led->dev, led->id);
+        status_led_set(led, 0);
     }
     return;
 }
@@ -148,7 +224,7 @@ void check_ble_conn_handler(struct k_work *work)
             uint8_t active_profile = zmk_ble_active_profile_index();
             if (active_profile < 3)
             {
-                led_set_brightness(pwm_leds[active_profile].dev, pwm_leds[active_profile].id, LED_STATUS_ON);
+                status_led_set(&pwm_leds[active_profile], LED_STATUS_ON);
             }
             led_fade_blink(&pwm_leds[3], LED_BLINK_CONN_DELAY, 1);
             led_all_OFF();
@@ -250,6 +326,9 @@ K_WORK_DELAYABLE_DEFINE(bat_animation_work, bat_animation_work_handler);
 
 static int led_init(const struct device *dev)
 {
+    k_work_queue_start(&soft_off_led_queue, soft_off_led_stack,
+                       K_THREAD_STACK_SIZEOF(soft_off_led_stack),
+                       K_PRIO_PREEMPT(5), NULL);
     led_all_OFF();
     k_work_schedule(&bat_animation_work, K_SECONDS(1));
     return 0;

@@ -1,0 +1,8 @@
+description: Soft off with an LED hold countdown
+compatible: "zmk,behavior-soft-off-led"
+include: zero_param.yaml
+
+properties:
+  hold-time-ms:
+    type: int
+    required: true

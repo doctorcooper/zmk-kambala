@@ -8,6 +8,14 @@ The bootloader and compiled firmware can be downloaded in the [releases section]
 
 The keyboard features 4 status LEDs (LED 1 to LED 4) to display battery charge, active Bluetooth profiles, and connection status.
 
+### Soft Off Countdown
+
+Hold the keys at positions 3 and 4 (R + T on the default layer) for 5 seconds,
+then release to turn both halves off. The four LEDs gradually fill in sequence
+on each half. Once the countdown is complete, all four pulse together to signal
+that the combo can be released. Releasing early cancels shutdown and clears the
+countdown. Battery, USB, and connection indications yield to the countdown.
+
 ### 🔋 Battery Status
 
 *(Legend: 🟢 = Solid ON, 🟡 = Blinking, 🔵 = Blinks once ⚫ = OFF)*
